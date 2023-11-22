@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use Auth;
 use App\Models\Ticket;
 use App\Models\Attendee;
+use App\Models\TicketOwner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Mail\InfoRegistrationMail;
 use Str;
 use Http;
+use PDF;
+use Storage;
+use File;
 
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -154,7 +158,7 @@ class TicketController extends Controller
         $last = Ticket::orderBy('created_at','desc')->first();
         $idcomplement = substr($last->id,-4) + 1;
         $id_trx = "TX-".$prefix.$prefix_fakultas."-".str_pad($idcomplement,4,"0",STR_PAD_LEFT);;
-        // dd($id_trx);
+
         $tiket = new Ticket();
         $tiket->id = $id_trx;
         $tiket->event_id = 1;
@@ -171,14 +175,17 @@ class TicketController extends Controller
         } else {
             $nominal_donasi = $data->nominal;
         }
-        // dd($nominal_donasi);
 
         $tiket->amount_donasi = $nominal_donasi;
         $tiket->save();
 
-        // dd($data);
+        $t = new TicketOwner();
+        $t->nama = $data->nama;
+        $t->id_tiket = $id_trx;
+        $t->save();
+
+
         return redirect()->route('detail.trx',$id_trx);
-        //here
     }
     public function detail_transaki($id)
     {
@@ -186,7 +193,7 @@ class TicketController extends Controller
         // dd($detail_tx);
         $qrcode="";
         if ($detail_tx != null) {
-            if($detail_tx->transaction_status =="Sukses" || $detail_tx->transaction_status =="settlement")
+            if($detail_tx->transaction_status =="Sukses" || $detail_tx->transaction_status =="Sukses - Manual")
             {
                 $qrcode = base64_encode(QrCode::format('svg')->size(150)->errorCorrection('H')->generate(url($detail_tx->id)));
                 $qrcode = QrCode::generate($detail_tx->id);
@@ -213,24 +220,54 @@ class TicketController extends Controller
             'email' => $ticket->email,
             'id_transaksi' => $ticket->id
         ];
+            $id_trx = $ticket->id;
         // dd($details);
 
             // \Mail::to($ticket->email)->send(new InfoRegistrationMail($details));
-            $botUrl = 'https://apidemo.waviro.com/api/sendwa';
-            $secretKey = 'jeB4DfuH2c1kZGaldxY2';
+            $botUrl = 'https://apiikaubaya.waviro.com/api/sendmedia';
+            $secretKey = 'NJpWs4gWb9vi5Q6hMJPV';
             $nohp = Str::replaceFirst('0', '62', $ticket->no_hp);
-            $message = "Hai $ticket->nama_lengkap!\nTerima kasih telah melakukan pendaftaran pada Acara Reuni IKA UBAYA.\nKode Pendaftaran anda adalah : $ticket->id.\nBerikut Link untuk Ticket Anda : https://reuni55ubaya.com/user/order/".$ticket->id."\n \n Salam Hangat, Panitia IKA Ubaya";
+            $message = "Selamat Siang Ubayatizen!\Terimakasih kami ucapkan atas partisipasinya dalam\nREUNI AKBAR IKA UBAYA 2023\nUntuk itu, kami bermaksud mengirimkan E-PASS sebagai bukti partisipasi saudara dan dapat ditunjukkan saat registrasi acara.\n \n 🤫 E-PASS bersifat rahasia dan hanya berlaku untuk 1x registrasi saja.\n \n Jangan lupa untuk hadir dalam rangkaian acara pada 3 Juni 2023.\n \n#StrongerTogether";
 
 
+            $qrcode = base64_encode(QrCode::format('svg')->size(150)->errorCorrection('H')->generate($id_trx));
+
+            $data["name"] = $ticket->nama_lengkap;
+            $data["nomer"] = $id_trx;
+            $data['qr'] = $qrcode;
+
+            $customPaper = array(0,0,1080,1660);
+            $pdf = PDF::loadview('pdf.tiket', $data);
+            $pdf->setPaper($customPaper);
+
+            $directory_path = public_path('public/pdf');
+
+            if(!File::exists($directory_path)) {
+
+                File::makeDirectory($directory_path, $mode = 0755, true, true);
+            }
+            $filename="Ticket-$id_trx.pdf";
+            $pdf->save(''.$directory_path.'/'.$filename);
+             $fileurl = url("/public/public/pdf/$filename");
             $response = Http::withHeaders([
                 'secretkey' => $secretKey,
                 'Content-Type' => 'application/json'
             ])->post($botUrl, [
                 'nohp' => $nohp,
-                'pesan' => $message
+                'pesan' => "",
+                'mediaurl' =>$fileurl
             ]);
-
-            echo "Sukses";
+            $responseChat = Http::withHeaders([
+                'secretkey' => $secretKey,
+                'Content-Type' => 'application/json'
+            ])->post('https://apiikaubaya.waviro.com/api/sendwa', [
+                'nohp' => $nohp,
+                'pesan' => "Selamat Siang Ubayatizen!\n\nTerimakasih kami ucapkan atas partisipasinya dalam\nREUNI AKBAR IKA UBAYA 2023\n\nUntuk itu, kami bermaksud mengirimkan E-PASS sebagai bukti partisipasi saudara dan dapat ditunjukkan saat registrasi acara.\n \n🤫 E-PASS bersifat rahasia dan hanya berlaku untuk 1x registrasi saja, tunjukkan E-PASS di meja registrasi.\n \nJangan lupa untuk hadir dalam rangkaian acara pada 3 Juni 2023.\n \n#StrongerTogether"
+            ]);
+            echo $response;
+            echo "<hr>";
+            echo $responseChat;
+            // echo "Sukses";
         } catch (\Exception $th) {
             echo "gagal : ".$th->getMessage();
         }

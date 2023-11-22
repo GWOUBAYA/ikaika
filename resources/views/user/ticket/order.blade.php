@@ -14,6 +14,24 @@
             z-index: 5;
         }
 
+        #pageloader
+        {
+            background: rgba( 255, 255, 255, 0.8 );
+            display: none;
+            height: 100%;
+            position: fixed;
+            width: 100%;
+            z-index: 9999;
+        }
+
+        #pageloader img
+        {
+            left: 50%;
+            margin-left: -32px;
+            margin-top: -32px;
+            position: absolute;
+            top: 50%;
+        }
 
 
         option {
@@ -29,6 +47,11 @@
 @endsection
 
 @section('content')
+
+<div id="pageloader">
+   <img src="http://cdnjs.cloudflare.com/ajax/libs/semantic-ui/0.16.1/images/loader-large.gif" alt="processing..." />
+</div>
+
     <section id="register" class="s-marathon-register" style="padding-top:148px; ">
         <div class="">
             <h2 class="title-conference"><span>Beli Tiket</span></h2>
@@ -36,7 +59,7 @@
                 <div class="col-md-6"
                     style="  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); padding:20px 20px; border-radius:20px; margin-bottom:20px;">
                     <div class="buy-ticket-form">
-                        <form class="form-register" action="{{ route('regis') }}" method="POST">
+                        <form class="form-register" id="form-regis" action="{{ route('regis') }}" method="POST">
                             @csrf
 
                             <h5 class="text-aja">Data Diri</h5>
@@ -62,7 +85,7 @@
                                 <input id="no_hp" type="text" name="no_hp" placeholder="Nomor HP" required>
                             </div>
                             <div class="mb-3">
-                                <select class="form-select" name="fakultas">
+                                <select class="form-select" name="fakultas" required>
                                     <option selected="selected" disabled>&nbsp; &nbsp; &nbsp; Alumni Fakultas</option>
                                     <option value="kia">&nbsp; &nbsp; &nbsp; Keluarga Ikatan Aumni</option>
                                     <option value="farmasi">&nbsp; &nbsp; &nbsp; Farmasi</option>
@@ -77,7 +100,7 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <input readonly type="text" required id="datepicker" name="angkatan" placeholder="Tahun Angkatan"/>
+                                <input readonly type="text" required id="datepicker" name="angkatan" placeholder="Tahun Angkatan" required/>
 
                                 {{-- <select class="form-select" name="fakultas">
                                     <option selected="selected" disabled>&nbsp; &nbsp; &nbsp; Angkatan</option>
@@ -102,13 +125,13 @@
                                 <input type="radio" onclick="handleNoClick(this);" name="pay-1" value="Tidak">
                                 <span>Tidak</span>
                             </div>
-                            
+
                             <div class="price-final">
                                 <span>price:</span>
                                 <div class="price-final-text" id="final_price">Rp. 150.000</div>
                             </div>
                             <div class="btn-form-cover">
-                                <button type="submit" class="btn"><span style="color: white">Bayar Sekarang</span></button>
+                                <button id="submitbtn" type="submit" class="btn"><span style="color: white">Bayar Sekarang</span></button>
                             </div>
                         </form>
                         <div id="message"></div>
@@ -125,7 +148,7 @@
         function getamount(evt) {
             // console.log($('#nominal').val());
             if($('#nominal').val() == '') {
-                
+
                 nominal = 0 + 150000;
             } else {
 
@@ -167,5 +190,14 @@
             startDate: new Date(1950, 01, 01),
             endDate: new Date(),
         });
+
+
     </script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script>
+    $("#form-regis").on("submit", function(){
+            $("#pageloader").fadeIn();
+        });
+</script>
 @endsection
